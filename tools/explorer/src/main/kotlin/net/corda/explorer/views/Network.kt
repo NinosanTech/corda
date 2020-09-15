@@ -5,6 +5,7 @@ import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView
 import javafx.animation.FadeTransition
 import javafx.animation.TranslateTransition
 import javafx.beans.binding.Bindings
+import javafx.beans.binding.ObjectBinding
 import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
@@ -155,6 +156,7 @@ class Network : CordaView() {
         }
 
         val button = node.renderButton(mapLabel)
+        (myIdentity as? ObjectBinding)?.invalidate()
         if (myIdentity.value in node.legalIdentitiesAndCerts.map { it.party }) {
             // It has to be a copy if we want to have notary both in notaries list and in identity (if we are looking at that particular notary node).
             myIdentityPane.apply { center = node.renderButton(mapLabel) }

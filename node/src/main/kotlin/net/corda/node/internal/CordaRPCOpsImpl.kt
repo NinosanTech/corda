@@ -1,6 +1,5 @@
 package net.corda.node.internal
 
-import net.corda.client.rpc.RPCException
 import net.corda.client.rpc.notUsed
 import net.corda.common.logging.CordaVersion
 import net.corda.core.CordaRuntimeException
@@ -55,6 +54,7 @@ import net.corda.node.services.api.FlowStarter
 import net.corda.node.services.api.ServiceHubInternal
 import net.corda.node.services.rpc.context
 import net.corda.node.services.statemachine.StateMachineManager
+import net.corda.nodeapi.exceptions.MissingAttachmentException
 import net.corda.nodeapi.exceptions.NonRpcFlowException
 import net.corda.nodeapi.exceptions.RejectedCommandException
 import rx.Observable
@@ -267,7 +267,9 @@ internal class CordaRPCOpsImpl(
     private fun <T> startFlow(logicType: Class<out FlowLogic<T>>, context: InvocationContext, args: Array<out Any?>): FlowStateMachineHandle<T> {
         if (!logicType.isAnnotationPresent(StartableByRPC::class.java)) throw NonRpcFlowException(logicType)
         if (isFlowsDrainingModeEnabled()) {
-            throw RejectedCommandException("Node is draining before shutdown. Cannot start new flows through RPC.")
+            return context.clientId?.let {
+                smm.reattachFlowWithClientId<T>(context.clientId!!)
+            } ?: throw RejectedCommandException("Node is draining before shutdown. Cannot start new flows through RPC.")
         }
         return flowStarter.invokeFlowAsync(logicType, context, *args).getOrThrow()
     }
@@ -278,7 +280,7 @@ internal class CordaRPCOpsImpl(
 
     override fun openAttachment(id: SecureHash): InputStream {
         return services.attachments.openAttachment(id)?.open() ?:
-            throw RPCException("Unable to open attachment with id: $id")
+            throw MissingAttachmentException("Unable to open attachment with id: $id")
     }
 
     override fun uploadAttachment(jar: InputStream): SecureHash {
